@@ -111,3 +111,8 @@ runtime code. `src/` is the Vite-compiled frontend. No monorepo, no workspaces â
 ## Complexity Tracking
 
 > No constitution violations requiring justification.
+
+| Accepted Deviation | Rationale | Condition for Revisiting |
+|--------------------|-----------|--------------------------|
+| No test tasks (Quality Gates clause) | This is a solo/small-team build where manual validation via the quickstart.md checklist is the primary QA mechanism; automated test infrastructure would add complexity exceeding the benefit at current scale | Add test tasks if the team grows, CI is introduced, or a regression is found that a test would have caught |
+| Reconnection = new waiting player (Constitution III reconnection clause) | Consistent with the no-persistence rule; a dropped player re-enters the waiting queue on reconnect and joins the next game; no session state is retained | If user feedback shows mid-game drops are frequent (flaky networks), add a name-match grace window (~30s) as an incremental change â€” it does not require architectural changes, only a new server-side timer and a `reconnect:resume` message type |
