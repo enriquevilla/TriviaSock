@@ -1,50 +1,102 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- Sync Impact Report
+Version Change: N/A → 1.0.0 (initial ratification)
+Modified Principles: N/A (new document — template placeholders replaced)
+Added Sections: Core Principles (I–III), WebSocket Standards, Quality Gates, Governance
+Removed Sections: [SECTION_2_NAME], [SECTION_3_NAME] placeholders replaced with concrete sections
+Templates Requiring Updates:
+  - .specify/templates/plan-template.md ✅ no changes needed (Constitution Check is generic)
+  - .specify/templates/spec-template.md ✅ no changes needed
+  - .specify/templates/tasks-template.md ✅ no changes needed (Security hardening task already present)
+Follow-up TODOs: None — all placeholders resolved
+-->
+
+# TriviaSock Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Simplicity First
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Code MUST be simple, readable, and maintainable above all else. Complexity MUST be justified —
+if a simpler approach exists, it MUST be taken. Every abstraction, pattern, or architectural
+decision requires explicit rationale. Prefer flat structures over deep hierarchies. Prefer
+explicit logic over implicit magic. Premature optimization is a violation of this principle.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: TriviaSock's inherent complexity lives in game logic and WebSocket coordination,
+not in framework abstractions. Keeping code simple enables fast debugging, easy onboarding, and
+confident refactoring. When in doubt, write the boring version.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. WebSocket Security
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+All WebSocket connections and messages MUST be validated, authenticated, and sanitized before
+processing. The server MUST reject malformed, unauthenticated, or unauthorized messages with an
+appropriate typed error response. Input from any client MUST be treated as untrusted.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Non-negotiable rules**:
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Every incoming message MUST be validated against a known schema before any processing occurs.
+- Authentication MUST complete at connection time; unauthenticated connections MUST NOT receive
+  game state.
+- Message payloads MUST be sanitized to prevent injection attacks.
+- Sensitive data (tokens, credentials, internal IDs) MUST NOT be logged or broadcast to clients.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: WebSocket servers are long-lived and stateful, handling many concurrent clients.
+A single security gap exposes all connected players simultaneously. Security is non-negotiable
+in a networked multiplayer application.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. State Consistency & Synchronization
+
+Game state MUST be the single source of truth and MUST remain consistent across all connected
+clients at all times. State mutations MUST be atomic and ordered. Clients receive authoritative
+state from the server only; client-side state is display-only and MUST NOT influence server
+decisions.
+
+**Non-negotiable rules**:
+
+- The server MUST own and control all authoritative game state.
+- State changes MUST be broadcast to all relevant clients atomically — no partial updates.
+- Race conditions in message handling MUST be prevented via sequential processing or explicit
+  synchronization mechanisms, documented in code.
+- Reconnecting clients MUST receive a full state snapshot before being allowed to participate.
+
+**Rationale**: In a real-time multiplayer trivia game, inconsistent state causes unfair gameplay,
+near-impossible-to-reproduce bugs, and a broken user experience. Consistency is a hard contract,
+not a best-effort goal.
+
+## WebSocket Standards
+
+Connection lifecycle, message protocol, and error handling MUST follow these standards across
+all features:
+
+- **Connection**: Authentication MUST complete within the first message exchange after opening.
+- **Messages**: All messages MUST use a consistent envelope: `{ type: string, payload: object }`.
+- **Errors**: All error conditions MUST produce a typed error response — never a silent failure.
+- **Disconnection**: Graceful disconnection MUST trigger proper cleanup of player and room state.
+- **Reconnection**: The protocol MUST support reconnection with full server-side state recovery.
+
+## Quality Gates
+
+Before any feature is considered complete, the following checks MUST pass:
+
+- Code review MUST confirm adherence to Principle I (no unjustified complexity introduced).
+- All WebSocket message handlers MUST have documented input validation per Principle II.
+- State mutation paths MUST be traceable and covered by tests per Principle III.
+- No feature may be merged that introduces a known race condition without explicit mitigation
+  documented inline in code comments.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution supersedes all other project conventions and practices. Amendments require a
+documented rationale and impact assessment before merging. Any change that materially alters or
+removes a principle constitutes a MAJOR version bump and MUST include a migration plan for
+affected code.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Versioning Policy**:
+
+- MAJOR: Principle removed, redefined, or backward-incompatible governance change.
+- MINOR: New principle or section added; materially expanded guidance.
+- PATCH: Clarifications, wording improvements, or non-semantic refinements.
+
+**Compliance**: All PRs and code reviews MUST verify adherence to this Constitution. Complexity
+violations MUST be justified in a Complexity Tracking table in the relevant plan document.
+
+**Version**: 1.0.0 | **Ratified**: 2026-04-11 | **Last Amended**: 2026-04-11
