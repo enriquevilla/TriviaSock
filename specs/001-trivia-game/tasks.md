@@ -34,10 +34,13 @@ package.json       — Single package, root level
 
 **Purpose**: Project scaffolding. No dependencies — start immediately.
 
-- [ ] T001 Create `package.json` with `ws` ^8 dependency and `vite` ^5 devDependency; set `"type": "module"` and scripts: `dev:server`, `dev:client`, `build`, `start`
-- [ ] T002 Create directory structure: `server/`, `src/`, `src/screens/`
+- [ ] T001 Create `package.json` with `ws` ^8 dependency; `vite` ^5 and `@playwright/test` ^1 devDependencies; set `"type": "module"` and scripts: `dev:server`, `dev:client`, `build`, `start`, `test` (`playwright test`)
+- [ ] T002 Create directory structure: `server/`, `src/`, `src/screens/`, `tests/e2e/`, `tests/e2e/helpers/`
 - [ ] T003 Create `vite.config.js` with `server.port: 5173` and `build.outDir: 'dist'`
 - [ ] T004 Create `index.html` as SPA shell: `<div id="app">` root containing one `<div>` per screen (lobby, waiting, voting, question, round-results, podium), all hidden by default via a CSS class
+- [ ] T073 [P] Create `playwright.config.js`: set `baseURL: 'http://localhost:5173'`; configure `webServer` to auto-start both `dev:server` (port 3001) and `dev:client` (port 5173) before tests run; set `workers: 1` (tests share server state, must run serially)
+- [ ] T074 [P] Create `tests/e2e/helpers/selectors.js`: export all DOM selector strings used across tests (e.g. `NAME_INPUT`, `READY_BTN`, `ANSWER_BTNS`, `SCORE`, `PHASE_INDICATOR`) — centralised so a DOM change requires one edit
+- [ ] T075 [P] Create `tests/e2e/helpers/game.js`: export `joinAs(page, name)` (fills name input, submits); `bothReady(p1, p2)` (calls `page.click(READY_BTN)` on both); `awaitPhase(page, phase)` (waits for the phase CSS class or data attribute to appear); `getScore(page, name)` (reads score from player list DOM)
 
 ---
 
@@ -91,6 +94,13 @@ Verify both tabs show consistent player lists and transition to voting simultane
 - [ ] T023 [US1] Add Ready button to `src/screens/lobby.js`: once joined (name submitted and accepted), show a "Ready" button; on click send `lobby:ready` and disable the button; display "Waiting for others…" text
 - [ ] T024 [US1] Wire lobby screen in `src/main.js`: on `state:full` with `phase === 'lobby'`, call `renderLobby` and `updateLobbyPlayers`; show the lobby screen div, hide all others
 
+### Tests — US1 (`tests/e2e/lobby.test.js`)
+
+- [ ] T076 [P] [US1] Test: two contexts join with unique names → both pages show both player names in the lobby player list
+- [ ] T077 [P] [US1] Test: duplicate name entry → second page receives an error message and the name field is re-enabled
+- [ ] T078 [P] [US1] Test: both players click Ready → both pages transition to `voting` phase (assert phase indicator)
+- [ ] T079 [P] [US1] Test: one player clicks Ready → the other page shows that player as ready but the game does not start
+
 **Checkpoint**: US1 is fully functional. Two players can join, see each other, click Ready, and the phase transitions to voting (blank screen is fine at this point).
 
 ---
@@ -116,6 +126,12 @@ updates on both tabs. Timer expires and the plurality winner is selected.
 - [ ] T031 [US2] Add live tally display to `src/screens/voting.js`: export `updateVoting(state)` that updates the vote count badge next to each category name from `state.vote.categories[n].votes`
 - [ ] T032 [US2] Add timer countdown to `src/screens/voting.js`: display `state.vote.timerRemaining` seconds in the UI; update on each `state:full` message
 - [ ] T033 [US2] Wire voting screen in `src/main.js`: on `state:full` with `phase === 'voting'`, call `renderVoting` on first render and `updateVoting` on subsequent ticks; show voting div, hide all others
+
+### Tests — US2 (`tests/e2e/voting.test.js`)
+
+- [ ] T080 [P] [US2] Test: one player votes for a category → the vote tally on both pages increments for that category
+- [ ] T081 [P] [US2] Test: both players vote for the same category → it is selected and both pages transition to `question_active`
+- [ ] T082 [P] [US2] Test: players vote for different categories → the plurality winner is selected (or a tied category is randomly selected); both pages transition to `question_active`
 
 **Checkpoint**: Category voting works end-to-end. Votes update live. Timer auto-resolves. Phase transitions to question_active (blank screen is fine).
 
@@ -145,6 +161,14 @@ player score increments, both tabs see the updated score, and the next question 
 - [ ] T043 [US3] Add question result reveal to `src/screens/question.js`: export `showQuestionResult(state)` called during `question_result` phase; highlight the correct answer button green; if there is a `pointWinner`, show "[name] got it!" banner; if no winner, show "Time's up!" banner
 - [ ] T044 [P] [US3] Create `src/screens/results.js`: export `renderResults(state)` that displays the scoreboard (all player names + scores sorted descending) during `round_end` phase
 - [ ] T045 [US3] Wire question and results screens in `src/main.js`: route `question_active` and `question_result` to `renderQuestion`/`showQuestionResult`; route `round_end` to `renderResults`
+
+### Tests — US3 (`tests/e2e/question.test.js`)
+
+- [ ] T083 [P] [US3] Test: when `question_active` phase arrives, both pages show 4 answer buttons and a countdown timer
+- [ ] T084 [P] [US3] Test: one player clicks an answer → that player's buttons are immediately disabled; both pages transition to `question_result`; exactly one player's score changes by 1 (or neither if incorrect — both outcomes are asserted as valid)
+- [ ] T085 [P] [US3] Test: after `question_result`, both pages reveal a highlighted answer button; transition to next question or `round_end` after the pause
+- [ ] T086 [P] [US3] Test: after 5 questions, both pages show `round_end` scoreboard with identical scores
+
 - [ ] T070 [P] [US3] Add `TRIVIA_UNAVAILABLE` error handling to `server/game.js` and `server/trivia.js`: if `fetchCategories()` fails on game start, broadcast an error to all lobby players and remain in `LOBBY` phase; if `fetchQuestions()` fails when a round begins, mark the category as used, broadcast a `TRIVIA_UNAVAILABLE` error to all players, and return to `startCategoryVote()` — retry once after 3 seconds before failing
 
 **Checkpoint**: A full 5-question round plays through. Correct answer awards point. Timer expiry works. Scores display correctly. Loops back to voting. Trivia API failure is handled gracefully without crashing.
@@ -171,6 +195,11 @@ scores. Click "Play Again" and verify lobby resets with zeroed scores.
 - [ ] T051 [US4] Add Play Again handler to `src/screens/podium.js`: on "Play Again" button click, send `{ type: 'lobby:reset', payload: {} }` via WebSocket
 - [ ] T052 [US4] Wire podium screen in `src/main.js`: route `game_over` phase to `renderPodium`
 
+### Tests — US4 (`tests/e2e/podium.test.js`)
+
+- [ ] T087 [P] [US4] Test: after all categories are exhausted, both pages show the `game_over` phase with a podium listing player names and scores in descending order
+- [ ] T088 [P] [US4] Test: clicking "Play Again" on either page resets both pages to `lobby` phase with zeroed scores and cleared ready status
+
 **Checkpoint**: Full game loop works end-to-end. Lobby → Voting → Questions → Voting (repeat) → Podium → Lobby.
 
 ---
@@ -193,6 +222,11 @@ appears. Complete the game in the other tabs. Verify the 3rd player appears in t
 
 - [ ] T057 [P] [US5] Create `src/screens/waiting.js`: export `renderWaiting()` that displays a "Game in progress" message and "You'll be added to the next game automatically." text
 - [ ] T058 [US5] Wire waiting screen in `src/main.js`: on `waiting` message type (not `state:full`), show the waiting screen div; when next `state:full` arrives with `phase === 'lobby'`, transition to lobby screen
+
+### Tests — US5 (`tests/e2e/waiting.test.js`)
+
+- [ ] T089 [P] [US5] Test: a third context that connects after the game starts receives the `waiting` screen; the active game pages are unaffected
+- [ ] T090 [P] [US5] Test: when the game ends (podium shown), the waiting context automatically transitions to `lobby` phase and the waiting player appears in the player list
 
 **Checkpoint**: Late-joining player sees waiting room and seamlessly enters the lobby when the game ends.
 
@@ -218,6 +252,12 @@ and podium shows current scores.
 - [ ] T064 [P] [US6] Add "End Game Early" button to `src/screens/voting.js` and `src/screens/question.js`: show button only when `state.vote?.type !== 'early_end'` (i.e., no early-end vote already active); on click send `vote:early_end:initiate`
 - [ ] T065 [US6] Add early-end vote overlay to `src/main.js`: when `state.vote?.type === 'early_end'` is detected in `state:full`, inject an overlay or banner on the current screen showing the vote tally, timer, and Yes/No buttons; on button click send `vote:early_end:cast`; hide overlay when `state.vote` becomes null
 
+### Tests — US6 (`tests/e2e/early-end.test.js`)
+
+- [ ] T091 [P] [US6] Test: one player initiates early-end vote → overlay appears on both pages showing the vote tally and Yes/No buttons
+- [ ] T092 [P] [US6] Test: both players (of 2) vote Yes → game ends immediately and both pages show `game_over` phase with current scores
+- [ ] T093 [P] [US6] Test: one player votes Yes, one votes No (2-player game, 50% is not majority) → vote fails, overlay dismisses, game continues from current phase
+
 **Checkpoint**: Early-end vote initiates from any in-game screen, updates live, and correctly ends or dismisses.
 
 ---
@@ -231,6 +271,7 @@ and podium shows current scores.
 - [ ] T069 Implement complete CSS styling in `style.css`: style each screen (lobby player list, voting category cards, question text + answer buttons, scoreboard, podium top-3 layout, waiting message); use CSS transitions for screen switches
 - [ ] T071 [P] Add connection status indicator to `src/ws.js` and `src/main.js`: show a "Disconnected — reconnecting…" banner when the WebSocket closes unexpectedly; attempt reconnect after 3 seconds
 - [ ] T072 Run the quickstart.md validation checklist end-to-end and fix any regressions found
+- [ ] T094 Run full Playwright test suite (`npm test`); fix any failures; confirm all 18 E2E tests pass
 
 ---
 
@@ -259,7 +300,9 @@ and podium shows current scores.
 - All Phase 1 tasks are short and sequential (4 tasks, ~1 dev hour)
 - Within Phase 2: T005–T010 (server) and T011–T014 (client) can be split across two developers
 - Within each story phase: server tasks and client tasks are in different files and can be worked in parallel
-- T066, T067, T068, T070, T071 in Polish phase are all independent files
+- T066, T068, T071 in Polish phase are all independent files
+- T073–T075 (Playwright setup) can run in parallel with T002–T004 (project scaffolding)
+- All test tasks within a story (T076–T093) are independent of each other [P]
 
 ---
 
