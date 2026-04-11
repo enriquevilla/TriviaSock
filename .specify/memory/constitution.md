@@ -34,8 +34,11 @@ appropriate typed error response. Input from any client MUST be treated as untru
 **Non-negotiable rules**:
 
 - Every incoming message MUST be validated against a known schema before any processing occurs.
-- Authentication MUST complete at connection time; unauthenticated connections MUST NOT receive
-  game state.
+- Authentication is defined as successful name registration via `lobby:join`. Before
+  authentication, a client is a read-only observer and MAY receive `state:full` broadcasts
+  (player list, current phase) but MUST NOT be permitted to send any game action messages.
+  Any game action received from an unauthenticated connection MUST be rejected with
+  `NOT_AUTHENTICATED`.
 - Message payloads MUST be sanitized to prevent injection attacks.
 - Sensitive data (tokens, credentials, internal IDs) MUST NOT be logged or broadcast to clients.
 
@@ -99,4 +102,4 @@ affected code.
 **Compliance**: All PRs and code reviews MUST verify adherence to this Constitution. Complexity
 violations MUST be justified in a Complexity Tracking table in the relevant plan document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-11 | **Last Amended**: 2026-04-11
+**Version**: 1.0.1 | **Ratified**: 2026-04-11 | **Last Amended**: 2026-04-11

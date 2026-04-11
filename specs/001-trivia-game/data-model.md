@@ -97,11 +97,15 @@ Covers both category voting and early-end voting.
 ```js
 {
   type: 'category' | 'early_end',
-  votes: Map<playerId, string|boolean>, // playerId → voted category name OR yes/no
-  timerHandle: TimerHandle,             // Server timer reference (not serialized)
-  timerRemaining: number,               // Seconds remaining
-  initiatedBy: string|null,            // Player name (early_end only)
+  votes: Map<ws, string|boolean>, // WebSocket reference (same key as state.players Map) → voted category name OR yes/no boolean
+  timerHandle: TimerHandle,       // Server timer reference (not serialized)
+  timerRemaining: number,         // Seconds remaining
+  initiatedBy: string|null,       // Player name (early_end only)
 }
+```
+
+Note: the Map key is the `ws` WebSocket reference matching the key used in `state.players`,
+NOT the player's `id` UUID field (which is internal and never sent to clients).
 ```
 
 ---

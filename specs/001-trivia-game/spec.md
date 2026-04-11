@@ -157,8 +157,10 @@ Verify the game ends and the podium is shown with current scores.
    active players are notified and presented with a yes/no prompt.
 2. **Given** an early-end vote is active, **When** strictly more than 50% of active players vote
    yes, **Then** the game ends immediately and the podium is shown with current scores.
-3. **Given** an early-end vote is active, **When** it fails (≤50% yes after all votes cast or
-   30-second timeout), **Then** the game continues from where it left off.
+3. **Given** an early-end vote is active, **When** the 30-second timer expires or all active
+   players have voted, **Then** the current tally is evaluated: if the majority threshold is
+   met the game ends immediately; otherwise the vote is dismissed and the game continues from
+   where it left off.
 4. **Given** only one early-end vote can be active at a time, **When** a vote is already in
    progress, **Then** additional vote initiations are ignored.
 
@@ -178,13 +180,20 @@ Verify the game ends and the podium is shown with current scores.
   vote thresholds recalculate based on remaining players.
 - What if only 1 player is in the lobby and clicks Ready? The game does not start; a minimum of
   2 players is required.
+- What if only 1 category remains for voting? The vote phase is skipped; that category is
+  selected automatically and its question round begins immediately.
+- What if the early-end vote initiator disconnects before the vote resolves? The vote continues
+  with the remaining players; the initiator leaving does not cancel or invalidate the vote.
+- What if only 1 active player remains after a mid-game disconnection? The game ends immediately
+  and the podium is displayed with that player in 1st place and their current score.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST allow players to enter a unique display name (1–20 characters) to join
-  the lobby; duplicate names within the same lobby MUST be rejected.
+- **FR-001**: System MUST allow players to enter a unique display name (1–20 characters,
+  printable ASCII only — characters 0x20–0x7E) to join the lobby; duplicate names MUST be
+  rejected (case-insensitive); names MUST be HTML-escaped before being rendered in any client.
 - **FR-002**: System MUST display all connected lobby players and their ready status in real-time
   to all connected players.
 - **FR-003**: Game MUST start automatically when all connected players (minimum 2) have indicated
@@ -193,8 +202,9 @@ Verify the game ends and the podium is shown with current scores.
   voting phase.
 - **FR-005**: System MUST select the category with the most votes; ties MUST be broken by random
   selection among the tied categories.
-- **FR-006**: Category voting phase MUST automatically resolve after 30 seconds; if no votes are
-  cast, a random remaining category MUST be selected.
+- **FR-006**: Category voting phase MUST automatically resolve after 30 seconds, or immediately
+  when all active players have cast their vote, whichever comes first; if no votes are cast,
+  a random remaining category MUST be selected.
 - **FR-007**: System MUST present exactly 5 questions per category round, one at a time, with 4
   multiple-choice answer options each.
 - **FR-008**: Each question MUST have a 30-second answer timer; questions with no correct answer
@@ -215,6 +225,8 @@ Verify the game ends and the podium is shown with current scores.
   state is discarded when the game ends or the server restarts.
 - **FR-016**: System MUST gracefully handle player disconnections at any game phase, recalculating
   all thresholds (ready, vote majority) based on the remaining active player count.
+- **FR-017**: System MUST reject a `lobby:join` request with a `LOBBY_FULL` error when the
+  active player count has already reached the maximum of 10 players.
 
 ### Key Entities
 

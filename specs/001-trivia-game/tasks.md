@@ -53,15 +53,16 @@ package.json       — Single package, root level
 - [ ] T006 Create `server/broadcast.js`: export `unicast(ws, type, payload)` that JSON-stringifies and sends only if `ws.readyState === WebSocket.OPEN`; export `broadcast(clients, type, payload)` that calls `unicast` for each client in the set
 - [ ] T007 Create `server/game.js`: export the `GamePhase` enum (`LOBBY`, `VOTING`, `QUESTION_ACTIVE`, `QUESTION_RESULT`, `ROUND_END`, `GAME_OVER`) and a `createInitialState()` function returning the empty `GameState` object as defined in `data-model.md`; export a mutable `state` singleton
 - [ ] T008 Create `server/trivia.js`: export `fetchCategories()` that calls the Open Trivia DB categories endpoint and returns an array of `{ id, name }` objects; include a `decodeHtml(str)` utility that converts HTML entities (e.g. `&amp;`, `&#039;`) to plain text
-- [ ] T009 Create `server/handlers.js`: export a `dispatch(ws, rawMessage, state)` function that parses the raw string as JSON (try/catch → unicast error on failure), looks up the message type in a handler map, and calls the matching handler; unicast `INVALID_MESSAGE` for unknown types
-- [ ] T010 Create `server/index.js`: create a `http.createServer` instance; attach a `WebSocketServer` from `ws`; on `connection`, add the client WebSocket to `state.clients` (a `Map<ws, player|null>`); call `dispatch` on each `message` event; handle `close` event per connection; listen on `PORT` constant (default 3001)
+- [ ] T009 Create `server/handlers.js`: export a `dispatch(ws, rawMessage, state)` function that parses the raw string as JSON (try/catch → unicast `INVALID_MESSAGE` on failure), checks if the message type is `lobby:join` — if not, and the `ws` is not in `state.players` or `state.waitingQueue`, unicast `NOT_AUTHENTICATED` and return; otherwise look up the message type in a handler map and call the matching handler; unicast `INVALID_MESSAGE` for unknown types
+- [ ] T010 Create `server/index.js`: create a `http.createServer` instance; attach a `WebSocketServer` from `ws`; on `connection`, immediately send `state:full` to the new client (read-only observer state); call `dispatch` on each `message` event; handle `close` event by calling `handleMidGameDisconnect(ws)` (T067) then removing the ws from all state maps; listen on `PORT` constant (default 3001); in production (`NODE_ENV=production`), serve `dist/` as static files from the same HTTP server before attaching the WS upgrade handler
 
 ### Client Foundation
 
-- [ ] T011 [P] Create `src/ws.js`: export `connect(url)` that opens a WebSocket, wraps it, and returns `{ send(type, payload), on(type, handler) }` — `on` registers a per-type handler called when a message of that type arrives
+- [ ] T011 [P] Create `src/ws.js`: export `connect()` that derives the WebSocket URL dynamically (`ws://` + `window.location.hostname` + `:3001` in development; `ws://` + `window.location.host` when served from the same origin in production); opens a WebSocket and returns `{ send(type, payload), on(type, handler) }` — `on` registers a per-type handler called when a message of that type arrives
 - [ ] T012 [P] Create `src/state.js`: export a `clientState` object with `phase`, `players`, `waitingCount`, `round`, `vote` fields (matching the serialized format in `data-model.md`); export `applyState(incoming)` that merges the incoming `state:full` payload into `clientState`
 - [ ] T013 Create `src/main.js`: import `connect` from `ws.js`; connect to `ws://localhost:3001`; register a `state:full` handler that calls `applyState` then routes to the correct screen based on `clientState.phase`; register a `waiting` handler
 - [ ] T014 [P] Add base CSS to `style.css`: CSS reset, `body` layout, a `.hidden` utility class (display:none), and placeholder containers for each screen div matching the IDs in `index.html`
+- [ ] T067 Add `handleMidGameDisconnect(ws)` full implementation to `server/game.js`: find and remove the disconnected player from `state.players`; if 1 or 0 active players remain, call `endGame()` immediately; if a category vote is active, re-evaluate whether all remaining players have voted and call `resolveVote()` if so; if an early-end vote is active (T059–T062), re-evaluate majority threshold and call `resolveEarlyEndVote()` if met; broadcast updated `state:full` after any state change
 
 **Checkpoint**: Server starts without error, client loads in browser, WebSocket handshake completes, `state:full` message is received on connection.
 
@@ -76,7 +77,7 @@ Verify both tabs show consistent player lists and transition to voting simultane
 
 ### Server — US1
 
-- [ ] T015 [US1] Add `addPlayer(ws, name)` to `server/game.js`: validate name length (1–20 chars trimmed), reject if case-insensitively duplicate across `state.players` and `state.waitingQueue`; create a player object (`{ name, score: 0, ready: false, joinedAt: Date.now() }`); add to `state.players`; return the player or an error string
+- [ ] T015 [US1] Add `addPlayer(ws, name)` to `server/game.js`: validate name length (1–20 chars trimmed), validate name contains only printable ASCII (char codes 0x20–0x7E), reject if `state.players.size >= MAX_PLAYERS` (return `LOBBY_FULL`), reject if case-insensitively duplicate across `state.players` and `state.waitingQueue`; create a player object (`{ name: htmlEscape(name), score: 0, ready: false, joinedAt: Date.now() }`); add to `state.players`; return the player or an error string
 - [ ] T016 [US1] Add `lobby:join` handler in `server/handlers.js`: validate payload has `name: 'string'`; call `addPlayer`; on success broadcast updated lobby state; on failure unicast `NAME_TAKEN` or `NAME_INVALID` error
 - [ ] T017 [US1] Add `lobby:ready` handler in `server/handlers.js`: reject with `NOT_IN_LOBBY` if phase is not `LOBBY`; find the player by `ws`; set `player.ready = true`; broadcast updated lobby state; then call `checkAllReady()`
 - [ ] T018 [US1] Add `checkAllReady()` to `server/game.js`: count active connected players; if all are ready AND count >= `MIN_PLAYERS` (default 2), call `startGame()`; `startGame()` sets phase to `VOTING` and calls `fetchCategories()` to populate `state.categories`; broadcast `state:full` to all active players
@@ -104,7 +105,7 @@ updates on both tabs. Timer expires and the plurality winner is selected.
 ### Server — US2
 
 - [ ] T025 [US2] Add `fetchQuestions(categoryId)` to `server/trivia.js`: call the Open Trivia DB questions endpoint with `amount=5` and `type=multiple`; decode HTML entities on all text fields; shuffle `[correct_answer, ...incorrect_answers]` into a 4-element `options` array; record `correctIndex`; return an array of question objects as defined in `data-model.md`
-- [ ] T026 [US2] Add `startCategoryVote()` to `server/game.js`: set phase to `VOTING`; create a new `VoteState` of type `'category'` with an empty votes Map; compute available categories (all categories not in `state.usedCategoryIds`); if none remain, call `endGame()`; otherwise start a 30-second countdown and broadcast `state:full`
+- [ ] T026 [US2] Add `startCategoryVote()` to `server/game.js`: set phase to `VOTING`; compute available categories (all categories not in `state.usedCategoryIds`); if none remain, call `endGame()`; if exactly 1 remains, call `startRound(thatCategory)` directly without entering a vote; otherwise create a new `VoteState` of type `'category'` with an empty votes Map, start a 30-second countdown, and broadcast `state:full`
 - [ ] T027 [US2] Add `vote:category` handler in `server/handlers.js`: reject if phase is not `VOTING` or vote type is not `'category'`; validate `categoryName` is in the available categories list; record the vote (overwrite if player votes again); broadcast updated `state:full`
 - [ ] T028 [US2] Add `resolveVote()` to `server/game.js`: tally votes per category; pick the category with the most votes; break ties by random selection among tied; call `startRound(category)` with the winner; mark category as used
 - [ ] T029 [US2] Add server-side vote countdown to `server/game.js`: `startCategoryVote()` sets a `setInterval` ticking every second; each tick decrements `state.votes.timerRemaining` and broadcasts `state:full`; when timer hits 0, clear interval and call `resolveVote()`; if all players vote before timer expires, also call `resolveVote()` immediately
@@ -144,8 +145,9 @@ player score increments, both tabs see the updated score, and the next question 
 - [ ] T043 [US3] Add question result reveal to `src/screens/question.js`: export `showQuestionResult(state)` called during `question_result` phase; highlight the correct answer button green; if there is a `pointWinner`, show "[name] got it!" banner; if no winner, show "Time's up!" banner
 - [ ] T044 [P] [US3] Create `src/screens/results.js`: export `renderResults(state)` that displays the scoreboard (all player names + scores sorted descending) during `round_end` phase
 - [ ] T045 [US3] Wire question and results screens in `src/main.js`: route `question_active` and `question_result` to `renderQuestion`/`showQuestionResult`; route `round_end` to `renderResults`
+- [ ] T070 [P] [US3] Add `TRIVIA_UNAVAILABLE` error handling to `server/game.js` and `server/trivia.js`: if `fetchCategories()` fails on game start, broadcast an error to all lobby players and remain in `LOBBY` phase; if `fetchQuestions()` fails when a round begins, mark the category as used, broadcast a `TRIVIA_UNAVAILABLE` error to all players, and return to `startCategoryVote()` — retry once after 3 seconds before failing
 
-**Checkpoint**: A full 5-question round plays through. Correct answer awards point. Timer expiry works. Scores display correctly. Loops back to voting.
+**Checkpoint**: A full 5-question round plays through. Correct answer awards point. Timer expiry works. Scores display correctly. Loops back to voting. Trivia API failure is handled gracefully without crashing.
 
 ---
 
@@ -159,7 +161,7 @@ scores. Click "Play Again" and verify lobby resets with zeroed scores.
 ### Server — US4
 
 - [ ] T046 [US4] Add game-over detection to `server/game.js`: in `startCategoryVote()`, after computing available categories, if `usedCategoryIds.size === state.categories.length`, call `endGame()` instead of starting a vote
-- [ ] T047 [US4] Add `endGame()` to `server/game.js`: set phase to `GAME_OVER`; compute podium by sorting active players descending by score, then by `joinedAt` ascending for ties; broadcast `state:full` including the top-3 slice
+- [ ] T047 [US4] Add `endGame()` to `server/game.js`: cancel any active timers (question, vote); set phase to `GAME_OVER`; compute podium by sorting active players descending by score, then by `joinedAt` ascending for ties; take up to the top-3 slice (if fewer than 3 active players remain, show all); broadcast `state:full` with the podium list
 - [ ] T048 [US4] Add `resetLobby()` to `server/game.js`: reset `state` back to initial LOBBY state (clear scores, categories, usedCategoryIds, currentRound, votes); keep connected players but reset their scores and ready flags; add any waiting-queue players to active players; broadcast `state:full`
 - [ ] T049 [US4] Add `lobby:reset` handler in `server/handlers.js`: only valid during `GAME_OVER` phase; call `resetLobby()`
 
@@ -182,8 +184,8 @@ appears. Complete the game in the other tabs. Verify the 3rd player appears in t
 
 ### Server — US5
 
-- [ ] T053 [US5] Update connection handler in `server/index.js`: if phase is NOT `LOBBY`, send `waiting` message to the new client AND unicast the current `state:full`; add the ws to `state.waitingQueue` instead of active players
-- [ ] T054 [US5] Add `addToWaitingQueue(ws, name)` to `server/game.js`: validate the name (same rules as `addPlayer`); store player in `state.waitingQueue` keyed by ws; return the player or error
+- [ ] T054 [US5] Add `addToWaitingQueue(ws, name)` to `server/game.js`: validate the name using the same rules as `addPlayer` (length, ASCII, uniqueness against both active players and waiting queue); store player in `state.waitingQueue` keyed by ws reference; return the player or an error string
+- [ ] T053 [US5] Update connection handler in `server/index.js`: if phase is NOT `LOBBY`, send `waiting` message to the new client AND unicast the current `state:full`; call `addToWaitingQueue(ws, name)` when the client subsequently sends `lobby:join`
 - [ ] T055 [US5] Update `lobby:join` handler in `server/handlers.js`: if the connection is already in the waiting queue, update the queued player's name instead of adding a new active player
 - [ ] T056 [US5] Update `resetLobby()` in `server/game.js`: after resetting active player state, move all players from `state.waitingQueue` into `state.players`; broadcast updated `state:full` to all (formerly waiting clients now receive the lobby state)
 
@@ -205,10 +207,10 @@ and podium shows current scores.
 
 ### Server — US6
 
-- [ ] T059 [US6] Add `vote:early_end:initiate` handler in `server/handlers.js`: reject if phase is `LOBBY` or `GAME_OVER`; reject with `VOTE_ALREADY_ACTIVE` if `state.votes` is not null; create a new `VoteState` of type `'early_end'` with empty votes map and `initiatedBy` set to the player's name; broadcast `state:full`
+- [ ] T059 [US6] Add `vote:early_end:initiate` handler in `server/handlers.js`: reject if phase is `LOBBY` or `GAME_OVER`; reject with `VOTE_ALREADY_ACTIVE` if `state.votes` is not null; create a new `VoteState` of type `'early_end'` with empty votes map and `initiatedBy` set to the player's name; broadcast `state:full`; **note**: the early-end vote overlays the current game phase without interrupting it — if a question timer (T035/T038) or round-end timer (T040) is active it continues running normally; if the question timer fires during an early-end vote, advance the question per T038/T039 regardless of the vote state
 - [ ] T060 [US6] Add 30-second early-end vote timer to `server/game.js` (reuse vote timer pattern from `startCategoryVote`): tick every second, broadcast `state:full`; on expiry call `resolveEarlyEndVote()`
 - [ ] T061 [US6] Add `vote:early_end:cast` handler in `server/handlers.js`: reject if `state.votes?.type !== 'early_end'`; validate payload `vote` is boolean; record the player's vote; if all active players have voted, call `resolveEarlyEndVote()` immediately; otherwise broadcast updated `state:full`
-- [ ] T062 [US6] Add `resolveEarlyEndVote()` to `server/game.js`: count yes votes; if yes count > 50% of active player count, call `endGame()`; otherwise clear `state.votes` and broadcast `state:full` to resume the previous game state
+- [ ] T062 [US6] Add `resolveEarlyEndVote()` to `server/game.js`: count yes votes; if yes count > 50% of active player count (whether triggered by all-voted or timer expiry), call `endGame()`; otherwise clear `state.votes` (set to null) and broadcast `state:full` — the game resumes its current phase unchanged
 - [ ] T063 [US6] Update `handleMidGameDisconnect(ws)` stub in `server/index.js`: if an early-end vote is active, re-evaluate the majority threshold with the reduced player count; auto-resolve if new majority is met
 
 ### Client — US6
@@ -225,10 +227,8 @@ and podium shows current scores.
 **Purpose**: Hardening, UX polish, and validation across all stories.
 
 - [ ] T066 [P] Add heartbeat ping/pong to `server/index.js`: every 30 seconds send a `ping` to all clients; terminate any client that has not responded since the last ping; use `ws.isAlive` flag pattern
-- [ ] T067 [P] Add `handleMidGameDisconnect(ws)` full implementation in `server/game.js`: if 1 or 0 active players remain after disconnect, call `endGame()`; if a question is active and the disconnecting player was the only answerer, no change needed; recalculate ready/vote thresholds
 - [ ] T068 [P] Add error message display to `src/main.js`: register an `error` message handler on the WebSocket; display the error message to the user (e.g., a dismissible toast/banner) without disrupting the current screen
 - [ ] T069 Implement complete CSS styling in `style.css`: style each screen (lobby player list, voting category cards, question text + answer buttons, scoreboard, podium top-3 layout, waiting message); use CSS transitions for screen switches
-- [ ] T070 [P] Add `TRIVIA_UNAVAILABLE` error handling to `server/game.js`: if `fetchCategories()` fails on game start, broadcast an error to all players and reset to LOBBY; if `fetchQuestions()` fails when a round begins, mark the category as used and return to voting
 - [ ] T071 [P] Add connection status indicator to `src/ws.js` and `src/main.js`: show a "Disconnected — reconnecting…" banner when the WebSocket closes unexpectedly; attempt reconnect after 3 seconds
 - [ ] T072 Run the quickstart.md validation checklist end-to-end and fix any regressions found
 

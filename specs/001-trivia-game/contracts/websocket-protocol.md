@@ -14,10 +14,15 @@ All messages are JSON-encoded strings. Every message follows the envelope:
 ## Connection Lifecycle
 
 1. Client opens WebSocket to `ws://host:3001`.
-2. Server immediately sends `state:full` with the current game state.
-3. Client sends `lobby:join` with player name to register.
-4. Server responds with `state:full` (updated) or `error` if name is invalid/taken.
-5. If a game is in progress, server sends `waiting` instead of updating lobby state.
+2. Server immediately sends `state:full` — the client is now a **read-only observer** (can see
+   the player list and game phase, but cannot send game action messages).
+3. Client renders the current state (player list visible) alongside the name-entry form.
+4. Client sends `lobby:join` with player name to register.
+5. Server responds with updated `state:full` (lobby) or `waiting` (game in progress).
+6. Client is now **authenticated** — all game action messages are accepted.
+
+Any game action message sent before a successful `lobby:join` (steps 1–3) MUST be rejected
+with `NOT_AUTHENTICATED`.
 
 ---
 
@@ -194,6 +199,8 @@ Typed error response. Always sent only to the sender.
 | `QUESTION_NOT_ACTIVE` | Answer sent outside question_active phase |
 | `VOTE_ALREADY_ACTIVE` | Early-end initiate sent while a vote is already in progress |
 | `TRIVIA_UNAVAILABLE` | Trivia API unreachable or returned no questions |
+| `NOT_AUTHENTICATED` | Game action sent before successful `lobby:join` |
+| `LOBBY_FULL` | `lobby:join` sent when active player count has reached maximum (10) |
 
 ---
 
