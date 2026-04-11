@@ -274,3 +274,22 @@ Verify the game ends and the podium is shown with current scores.
   all available categories are offered for voting (no pre-filtering).
 - Score ties on the podium are broken by earliest join time (first to join ranks higher).
 - There is no host, admin panel, or authentication system.
+
+## E2E Testing Approach
+
+Tests use Playwright with two browser contexts running simultaneously to simulate two competing
+players. Because trivia content is fetched live from a public API, tests MUST NOT assert on
+specific question text or correct answers. Instead, tests assert on:
+
+- **State transitions**: the correct screen/phase class is active on both pages after each event
+- **Mechanics**: score increments by exactly 1 for the answering player; no other player's score
+  changes; buttons are disabled after an answer is submitted
+- **Synchronization**: both pages show identical player lists, scores, and timers within one
+  render cycle
+- **Edge cases**: disconnecting one page mid-game does not crash the other; waiting room player
+  transitions to lobby after game ends
+
+**Dynamic answer strategy**: When a test must trigger a correct or incorrect answer, it clicks
+the first available answer button and branches on the resulting DOM state (score changed = correct;
+no score change = incorrect). Tests do not require a specific outcome — they verify the system
+behaves correctly for either path.

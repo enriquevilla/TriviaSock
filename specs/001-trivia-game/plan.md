@@ -15,7 +15,7 @@ library) + Vite-powered vanilla JS frontend.
 **Language/Version**: JavaScript — Node.js 20+ (server), vanilla ES modules (client)
 **Primary Dependencies**: `ws` ^8.x (WebSocket server); `vite` ^5.x (frontend build, devDep)
 **Storage**: None — all state is in-memory; discarded on game end or server restart
-**Testing**: Not specified — manual validation per quickstart.md checklist
+**Testing**: `@playwright/test` ^1.x (E2E, devDep) — 2-context browser tests; dynamic strategy (no fixed answers)
 **Target Platform**: Modern web browser (client); Node.js 20+ process (server)
 **Project Type**: Web application — Node.js WebSocket server + Vite vanilla JS frontend
 **Performance Goals**: State broadcast latency <500ms; stable under 10 concurrent players
@@ -98,10 +98,22 @@ triviasock/
 │       ├── question.js  # Question text + 4 answer buttons + timer
 │       ├── results.js   # Round score summary
 │       └── podium.js    # Game over, top-3 display, play again button
+├── tests/
+│   └── e2e/
+│       ├── helpers/
+│       │   ├── game.js      # Shared: launch 2 contexts, join game, await phase
+│       │   └── selectors.js # Centralised DOM selectors used across test files
+│       ├── lobby.test.js    # US1: name entry, player list, ready-up, game start
+│       ├── voting.test.js   # US2: vote tally, timer expiry, single-category skip
+│       ├── question.test.js # US3: answer mechanics, scoring, timer expiry
+│       ├── podium.test.js   # US4: game over, play again reset
+│       ├── waiting.test.js  # US5: late joiner, auto-transition to new lobby
+│       └── early-end.test.js # US6: vote initiation, majority, timeout fail
 ├── index.html           # Single HTML page, <div id="app"> root
 ├── style.css            # All styles (no CSS framework)
 ├── vite.config.js       # Vite config (port 5173 dev, output to dist/)
-└── package.json         # Single package: ws + vite
+├── playwright.config.js # baseURL, 2-worker limit, webServer auto-start
+└── package.json         # Single package: ws + vite + @playwright/test (devDep)
 ```
 
 **Structure Decision**: Web application layout. The `server/` directory holds all Node.js
@@ -114,5 +126,5 @@ runtime code. `src/` is the Vite-compiled frontend. No monorepo, no workspaces �
 
 | Accepted Deviation | Rationale | Condition for Revisiting |
 |--------------------|-----------|--------------------------|
-| No test tasks (Quality Gates clause) | This is a solo/small-team build where manual validation via the quickstart.md checklist is the primary QA mechanism; automated test infrastructure would add complexity exceeding the benefit at current scale | Add test tasks if the team grows, CI is introduced, or a regression is found that a test would have caught |
+| Playwright E2E only, no unit tests (Quality Gates clause) | Trivia API responses are non-deterministic; unit tests for question logic would require mocking the entire API and game loop. Playwright with 2 browser contexts tests the real system end-to-end and is more valuable than mocked unit tests for this use case. State mutation paths are verified through observable DOM and WebSocket behavior. | Add unit tests for pure functions (vote resolution, score tiebreak) if logic grows complex |
 | Reconnection = new waiting player (Constitution III reconnection clause) | Consistent with the no-persistence rule; a dropped player re-enters the waiting queue on reconnect and joins the next game; no session state is retained | If user feedback shows mid-game drops are frequent (flaky networks), add a name-match grace window (~30s) as an incremental change — it does not require architectural changes, only a new server-side timer and a `reconnect:resume` message type |
