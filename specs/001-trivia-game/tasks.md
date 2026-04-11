@@ -34,13 +34,13 @@ package.json       — Single package, root level
 
 **Purpose**: Project scaffolding. No dependencies — start immediately.
 
-- [ ] T001 Create `package.json` with `ws` ^8 dependency; `vite` ^5 and `@playwright/test` ^1 devDependencies; set `"type": "module"` and scripts: `dev:server`, `dev:client`, `build`, `start`, `test` (`playwright test`)
-- [ ] T002 Create directory structure: `server/`, `src/`, `src/screens/`, `tests/e2e/`, `tests/e2e/helpers/`
-- [ ] T003 Create `vite.config.js` with `server.port: 5173` and `build.outDir: 'dist'`
-- [ ] T004 Create `index.html` as SPA shell: `<div id="app">` root containing one `<div>` per screen (lobby, waiting, voting, question, round-results, podium), all hidden by default via a CSS class
-- [ ] T073 [P] Create `playwright.config.js`: set `baseURL: 'http://localhost:5173'`; configure `webServer` to auto-start both `dev:server` (port 3001) and `dev:client` (port 5173) before tests run; set `workers: 1` (tests share server state, must run serially)
-- [ ] T074 [P] Create `tests/e2e/helpers/selectors.js`: export all DOM selector strings used across tests (e.g. `NAME_INPUT`, `READY_BTN`, `ANSWER_BTNS`, `SCORE`, `PHASE_INDICATOR`) — centralised so a DOM change requires one edit
-- [ ] T075 [P] Create `tests/e2e/helpers/game.js`: export `joinAs(page, name)` (fills name input, submits); `bothReady(p1, p2)` (calls `page.click(READY_BTN)` on both); `awaitPhase(page, phase)` (waits for the phase CSS class or data attribute to appear); `getScore(page, name)` (reads score from player list DOM)
+- [x] T001 Create `package.json` with `ws` ^8 dependency; `vite` ^5 and `@playwright/test` ^1 devDependencies; set `"type": "module"` and scripts: `dev:server`, `dev:client`, `build`, `start`, `test` (`playwright test`)
+- [x] T002 Create directory structure: `server/`, `src/`, `src/screens/`, `tests/e2e/`, `tests/e2e/helpers/`
+- [x] T003 Create `vite.config.js` with `server.port: 5173` and `build.outDir: 'dist'`
+- [x] T004 Create `index.html` as SPA shell: `<div id="app">` root containing one `<div>` per screen (lobby, waiting, voting, question, round-results, podium), all hidden by default via a CSS class
+- [x] T073 [P] Create `playwright.config.js`: set `baseURL: 'http://localhost:5173'`; configure `webServer` to auto-start both `dev:server` (port 3001) and `dev:client` (port 5173) before tests run; set `workers: 1` (tests share server state, must run serially)
+- [x] T074 [P] Create `tests/e2e/helpers/selectors.js`: export all DOM selector strings used across tests (e.g. `NAME_INPUT`, `READY_BTN`, `ANSWER_BTNS`, `SCORE`, `PHASE_INDICATOR`) — centralised so a DOM change requires one edit
+- [x] T075 [P] Create `tests/e2e/helpers/game.js`: export `joinAs(page, name)` (fills name input, submits); `bothReady(p1, p2)` (calls `page.click(READY_BTN)` on both); `awaitPhase(page, phase)` (waits for the phase CSS class or data attribute to appear); `getScore(page, name)` (reads score from player list DOM)
 
 ---
 
