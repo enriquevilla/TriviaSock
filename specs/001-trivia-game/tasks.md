@@ -53,7 +53,7 @@ package.json       — Single package, root level
 
 ### Server Foundation
 
-- [ ] T005 Create `server/validate.js`: export a `validate(msg, schema)` function that returns `false` if `msg` is not an object or any key in `schema` does not match the expected type; export an `errorResponse(code, message)` helper
+- [x] T005 Create `server/validate.js`: export a `validate(msg, schema)` function that returns `false` if `msg` is not an object or any key in `schema` does not match the expected type; export an `errorResponse(code, message)` helper
 - [ ] T006 Create `server/broadcast.js`: export `unicast(ws, type, payload)` that JSON-stringifies and sends only if `ws.readyState === WebSocket.OPEN`; export `broadcast(clients, type, payload)` that calls `unicast` for each client in the set
 - [ ] T007 Create `server/game.js`: export the `GamePhase` enum (`LOBBY`, `VOTING`, `QUESTION_ACTIVE`, `QUESTION_RESULT`, `ROUND_END`, `GAME_OVER`) and a `createInitialState()` function returning the empty `GameState` object as defined in `data-model.md`; export a mutable `state` singleton
 - [ ] T008 Create `server/trivia.js`: export `fetchCategories()` and `fetchQuestions(categoryId)` backed by in-memory caches (module-level `Map`/variable — no library); when `process.env.TRIVIA_MOCK === 'true'`, both functions return data from `tests/e2e/fixtures/trivia.js` instead of calling the API; include a `decodeHtml(str)` utility for HTML entity decoding (e.g. `&amp;`, `&#039;`)
