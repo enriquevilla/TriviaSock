@@ -1,3 +1,5 @@
+import { broadcast } from './broadcast.js';
+
 export const GamePhase = {
   LOBBY:           'lobby',
   VOTING:          'voting',
@@ -98,8 +100,8 @@ export function serializeState(s) {
 
 // ---------------------------------------------------------------------------
 // Stub functions — filled in by later tasks as each phase is implemented.
-// These stubs exist so that handleMidGameDisconnect (T067) and other Phase 2
-// code can reference them without forward-declaration errors.
+// These stubs exist so that handleMidGameDisconnect and other Phase 2 code
+// can reference them without forward-declaration errors.
 // ---------------------------------------------------------------------------
 
 /** Ends the current game and transitions to GAME_OVER. Filled in: T047 (Phase 6). */
@@ -110,3 +112,62 @@ export function resolveVote() { /* stub */ }
 
 /** Resolves the active early-end vote. Filled in: T062 (Phase 8). */
 export function resolveEarlyEndVote() { /* stub */ }
+
+// ---------------------------------------------------------------------------
+// Disconnect handling
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle a WebSocket disconnection that occurs while a game is in progress
+ * (any phase other than LOBBY and GAME_OVER).
+ *
+ * Responsibilities:
+ *  - Remove the player from state.players (and waitingQueue if present)
+ *  - End the game immediately if ≤1 active players remain
+ *  - Re-evaluate vote thresholds if a category or early-end vote is active
+ *  - Broadcast updated state:full to remaining active clients
+ *
+ * Called from server/index.js on WebSocket 'close' event.
+ * @param {import('ws').WebSocket} ws
+ */
+export function handleMidGameDisconnect(ws) {
+  // Remove from waiting queue (no further action needed for waiting players)
+  if (state.waitingQueue.has(ws)) {
+    state.waitingQueue.delete(ws);
+    return;
+  }
+
+  // Remove from active players
+  if (!state.players.has(ws)) return;
+  state.players.delete(ws);
+
+  const activePlayers = state.players.size;
+
+  // If only 0 or 1 players remain, end the game immediately
+  if (activePlayers <= 1) {
+    endGame();
+    return;
+  }
+
+  // Re-evaluate category vote threshold
+  if (state.votes?.type === 'category') {
+    const voted = state.votes.votes;
+    // Remove the disconnected player's vote if present
+    voted.delete(ws);
+    // Check if all remaining players have now voted
+    if (voted.size >= activePlayers) {
+      resolveVote();
+      return;
+    }
+  }
+
+  // Re-evaluate early-end vote threshold
+  if (state.votes?.type === 'early_end') {
+    state.votes.votes.delete(ws);
+    resolveEarlyEndVote();
+    return;
+  }
+
+  // Broadcast updated state to remaining active clients
+  broadcast(state.players.keys(), 'state:full', serializeState(state));
+}
