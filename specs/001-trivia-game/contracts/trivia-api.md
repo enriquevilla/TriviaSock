@@ -24,7 +24,8 @@ GET https://opentdb.com/api_category.php
 }
 ```
 
-Called once when a new game session starts to populate the available categories list.
+Called once at server startup and cached in memory. The cached list is reused for all
+subsequent game sessions until the server restarts.
 
 ### GET Questions
 ```
@@ -48,7 +49,9 @@ GET https://opentdb.com/api.php?amount=5&category={categoryId}&type=multiple
 }
 ```
 
-Called once per category round, when that category's voting phase resolves.
+Called once per category when that category's voting phase resolves. The result is cached
+in memory for the duration of the session. Since each category is played at most once per
+game, there is no scenario requiring a re-fetch.
 
 ---
 
@@ -74,6 +77,36 @@ Called once per category round, when that category's voting phase resolves.
   data model.
 - The API does not guarantee question uniqueness across calls. For our use case (one call
   per category per game), duplicates within a single game are unlikely and acceptable.
+
+---
+
+## Caching Strategy
+
+All API data is cached in-memory within `server/trivia.js` as module-level variables:
+
+| Data | Cached at | Cache key | Eviction |
+|------|-----------|-----------|----------|
+| Categories | Server startup | N/A (single list) | Server restart |
+| Questions | First fetch per category | `categoryId` | Server restart |
+
+The cache is a plain JS `Map` / variable — no external cache library. Because state is
+never persisted, the cache naturally resets with the process.
+
+---
+
+## Mock Mode
+
+When the environment variable `TRIVIA_MOCK=true` is set, `server/trivia.js` returns data
+from the local fixture file `tests/e2e/fixtures/trivia.js` instead of calling the API.
+
+- `fetchCategories()` returns the fixture's category list
+- `fetchQuestions(categoryId)` returns the fixture's question set for that category
+
+This is used exclusively by the Playwright test runner (configured via `playwright.config.js`
+`webServer.env`). Production and manual development always use the live API.
+
+The fixture file MUST cover every category referenced in the test suite. Correct answer
+indices in the fixture are stable and known, enabling deterministic test assertions.
 
 ---
 
