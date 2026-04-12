@@ -259,8 +259,10 @@ Verify the game ends and the podium is shown with current scores.
 
 ## Assumptions
 
-- Trivia content is sourced from the Open Trivia Database public API (no registration required);
-  questions are fetched per category at round start, not stored.
+- Trivia content is sourced from the Open Trivia Database public API (no registration required).
+  Categories are fetched once at server startup and cached in memory for the session. Questions
+  are fetched per category when that category is selected and cached for the remainder of the
+  session. All cached data is in-memory only and discarded on server restart.
 - Maximum 10 players per game session; there is a single shared game room (no multi-room support).
 - Minimum 2 players must be connected and ready before a game can start.
 - 5 questions are presented per category round.
@@ -278,8 +280,7 @@ Verify the game ends and the podium is shown with current scores.
 ## E2E Testing Approach
 
 Tests use Playwright with two browser contexts running simultaneously to simulate two competing
-players. Because trivia content is fetched live from a public API, tests MUST NOT assert on
-specific question text or correct answers. Instead, tests assert on:
+players. Tests assert on:
 
 - **State transitions**: the correct screen/phase class is active on both pages after each event
 - **Mechanics**: score increments by exactly 1 for the answering player; no other player's score
@@ -289,7 +290,13 @@ specific question text or correct answers. Instead, tests assert on:
 - **Edge cases**: disconnecting one page mid-game does not crash the other; waiting room player
   transitions to lobby after game ends
 
-**Dynamic answer strategy**: When a test must trigger a correct or incorrect answer, it clicks
-the first available answer button and branches on the resulting DOM state (score changed = correct;
-no score change = incorrect). Tests do not require a specific outcome — they verify the system
-behaves correctly for either path.
+**Mock data strategy**: Tests run against a fixed trivia fixture (`tests/e2e/fixtures/trivia.js`)
+activated by setting `TRIVIA_MOCK=true` on the test server process. When active, `server/trivia.js`
+returns the fixture data instead of calling the Open Trivia Database API. This makes all tests
+fully deterministic — correct answers are known in advance, enabling precise assertions on score
+changes, answer reveal content, and any flow that requires a specific correct/incorrect outcome.
+The fixture covers all categories and questions needed by the full test suite.
+
+**Live API tests**: Any test that explicitly validates Open Trivia Database integration (response
+parsing, HTML entity decoding, error handling) runs without the mock flag and accepts
+non-deterministic content.

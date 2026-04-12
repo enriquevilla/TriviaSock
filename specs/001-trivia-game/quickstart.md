@@ -106,6 +106,23 @@ All configuration is in `server/index.js` as module-level constants:
 | `VOTE_TIMER_SECS` | `30` | Seconds for category and early-end votes |
 | `RESULT_PAUSE_SECS` | `3` | Pause after question result |
 | `ROUND_END_PAUSE_SECS` | `5` | Pause after round end before next vote |
+| `TRIVIA_MOCK` | `undefined` | Set to `true` to use fixture data instead of live API (tests only) |
+
+---
+
+## Running Tests
+
+### E2E tests (Playwright)
+
+```bash
+npm test
+```
+
+Playwright automatically starts both the WebSocket server and the Vite dev server before
+running tests. The test server runs with `TRIVIA_MOCK=true` so all tests use deterministic
+fixture data from `tests/e2e/fixtures/trivia.js`.
+
+Tests run serially (`workers: 1`) because they share a single server instance.
 
 ---
 
