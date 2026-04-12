@@ -1,0 +1,42 @@
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Base */
+body {
+  font-family: system-ui, sans-serif;
+  background: #0f0f13;
+  color: #e8e8f0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Utility */
+.hidden {
+  display: none !important;
+}
+
+/* App root */
+#app {
+  width: 100%;
+  max-width: 640px;
+  padding: 1.5rem;
+}
+
+/* Screens — each fills the app container */
+.screen {
+  width: 100%;
+}
+
+/* Screen placeholders (overridden per-screen in later phases) */
+#screen-lobby        { /* Phase 3 */ }
+#screen-waiting      { /* Phase 7 */ }
+#screen-voting       { /* Phase 4 */ }
+#screen-question     { /* Phase 5 */ }
+#screen-round-results { /* Phase 5 */ }
+#screen-podium       { /* Phase 6 */ }
