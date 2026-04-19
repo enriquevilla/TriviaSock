@@ -90,7 +90,7 @@ Verify both tabs show consistent player lists and transition to voting simultane
 
 ### Client — US1
 
-- [ ] T021 [P] [US1] Create `src/screens/lobby.js`: export `renderLobby(state)` that generates and injects a name-entry form into the lobby screen div; on submit, call `ws.send('lobby:join', { name })` and hide the form
+- [x] T021 [P] [US1] Create `src/screens/lobby.js`: export `renderLobby(state)` that generates and injects a name-entry form into the lobby screen div; on submit, call `ws.send('lobby:join', { name })` and hide the form
 - [ ] T022 [US1] Add player list rendering to `src/screens/lobby.js`: export `updateLobbyPlayers(players)` that renders the list of connected players with their ready/not-ready status as DOM nodes
 - [ ] T023 [US1] Add Ready button to `src/screens/lobby.js`: once joined (name submitted and accepted), show a "Ready" button; on click send `lobby:ready` and disable the button; display "Waiting for others…" text
 - [ ] T024 [US1] Wire lobby screen in `src/main.js`: on `state:full` with `phase === 'lobby'`, call `renderLobby` and `updateLobbyPlayers`; show the lobby screen div, hide all others
