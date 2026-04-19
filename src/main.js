@@ -1,5 +1,6 @@
 import { connect } from './ws.js';
 import { clientState, applyState } from './state.js';
+import { renderLobby, updateLobbyPlayers } from './screens/lobby.js';
 
 const ws = connect();
 
@@ -27,6 +28,11 @@ function showScreen(id) {
 function route() {
   const screenId = SCREEN_MAP[clientState.phase];
   if (screenId) showScreen(screenId);
+
+  if (clientState.phase === 'lobby') {
+    renderLobby(clientState);
+    updateLobbyPlayers(clientState.players ?? []);
+  }
 }
 
 ws.on('state:full', (payload) => {
