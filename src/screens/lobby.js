@@ -4,6 +4,7 @@ const screen = document.getElementById('screen-lobby');
 
 let joined = false;
 let joinForm = null;
+let readyBtn = null;
 
 function buildJoinForm() {
   const form = document.createElement('form');
@@ -42,6 +43,18 @@ export function renderLobby(state) {
   if (!joined && !joinForm) {
     joinForm = buildJoinForm();
     screen.prepend(joinForm);
+  }
+
+  if (joined && !readyBtn) {
+    readyBtn = document.createElement('button');
+    readyBtn.id = 'ready-btn';
+    readyBtn.textContent = 'Ready';
+    readyBtn.addEventListener('click', () => {
+      ws.send('lobby:ready', {});
+      readyBtn.disabled = true;
+      readyBtn.textContent = 'Waiting for others\u2026';
+    });
+    screen.appendChild(readyBtn);
   }
 }
 
