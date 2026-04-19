@@ -1,5 +1,6 @@
 import { broadcast } from './broadcast.js';
 import { htmlEscape } from './validate.js';
+import { fetchCategories } from './trivia.js';
 
 export const GamePhase = {
   LOBBY:           'lobby',
@@ -33,6 +34,7 @@ export function createInitialState() {
 export const state = createInitialState();
 
 const MAX_PLAYERS = 8;
+const MIN_PLAYERS = 2;
 
 /**
  * Add a player to the lobby. Returns the new player object on success,
@@ -141,8 +143,26 @@ export function serializeState(s) {
 // can reference them without forward-declaration errors.
 // ---------------------------------------------------------------------------
 
-/** Checks if all lobby players are ready and starts the game. Filled in: T018 (Phase 3). */
-export function checkAllReady() { /* stub */ }
+/**
+ * If all active players are ready and there are at least MIN_PLAYERS, start the game.
+ * No-op otherwise.
+ */
+export function checkAllReady() {
+  const players = [...state.players.values()];
+  if (players.length < MIN_PLAYERS) return;
+  if (!players.every(p => p.ready)) return;
+  startGame();
+}
+
+async function startGame() {
+  state.phase = GamePhase.VOTING;
+  try {
+    state.categories = await fetchCategories();
+  } catch {
+    // Leave categories empty; voting handler will deal with it
+  }
+  broadcast(state.players.keys(), 'state:full', serializeState(state));
+}
 
 /** Ends the current game and transitions to GAME_OVER. Filled in: T047 (Phase 6). */
 export function endGame() { /* stub */ }
