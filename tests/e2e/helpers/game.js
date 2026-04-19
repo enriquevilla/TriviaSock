@@ -27,7 +27,9 @@ export async function bothReady(p1, p2) {
  * @param {string} phase  — one of: lobby, waiting, voting, question, round-results, podium
  */
 export async function awaitPhase(page, phase) {
-  await page.waitForSelector(`#screen-${phase}:not(.hidden)`, { timeout: 10000 });
+  // state: 'attached' checks CSS selector match only; 'visible' also requires non-zero size,
+  // which fails on empty screen divs (voting, waiting, etc.) with no content yet.
+  await page.waitForSelector(`#screen-${phase}:not(.hidden)`, { timeout: 10000, state: 'attached' });
 }
 
 /**

@@ -3,6 +3,12 @@ import { joinAs, bothReady, awaitPhase } from './helpers/game.js';
 import { PLAYER_LIST, READY_BTN } from './helpers/selectors.js';
 
 test.describe('Phase 3 — Lobby (US1)', () => {
+  test.beforeEach(async ({ request }) => {
+    // Reset server state before each test for isolation.
+    // The /test/reset endpoint terminates all connections and clears game state.
+    await request.post('http://localhost:3001/test/reset');
+  });
+
   test('T076: two players join and both see each other in the player list', async ({ browser }) => {
     const ctx1 = await browser.newContext();
     const ctx2 = await browser.newContext();
@@ -16,6 +22,9 @@ test.describe('Phase 3 — Lobby (US1)', () => {
     await awaitPhase(p2, 'lobby');
 
     await joinAs(p1, 'Alice');
+    // Wait for Alice to appear on p1 before p2 joins to avoid race
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Alice');
+
     await joinAs(p2, 'Bob');
 
     // Both pages should show both names in the player list
@@ -28,14 +37,11 @@ test.describe('Phase 3 — Lobby (US1)', () => {
     await ctx2.close();
   });
 
-  test('T077: duplicate name entry shows error and re-enables the name field', async ({ browser }) => {
+  test('T077: duplicate name entry shows error and player stays on lobby', async ({ browser }) => {
     const ctx1 = await browser.newContext();
     const ctx2 = await browser.newContext();
     const p1 = await ctx1.newPage();
     const p2 = await ctx2.newPage();
-
-    const errors1 = [];
-    p1.on('console', msg => { if (msg.type() === 'error') errors1.push(msg.text()); });
 
     await p1.goto('/');
     await p2.goto('/');
@@ -44,14 +50,16 @@ test.describe('Phase 3 — Lobby (US1)', () => {
     await awaitPhase(p2, 'lobby');
 
     await joinAs(p1, 'Alice');
-    // p2 tries to use the same name
+    // Wait for Alice to appear on p1 before p2 tries the same name
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Alice');
+
+    // p2 tries to use the same name — server sends NAME_TAKEN error
     await joinAs(p2, 'Alice');
 
-    // p2 should still be on the lobby screen (no phase change)
-    await awaitPhase(p2, 'lobby');
-    // The join form should reappear or the name input should still be present
-    // (server sends error; client should handle it — for now verify lobby stays)
+    // p2 should remain on the lobby screen (no phase transition on error)
     await expect(p2.locator('#screen-lobby')).not.toHaveClass(/hidden/);
+    // Alice should NOT appear in p2's player list (p2 was rejected)
+    await expect(p2.locator(PLAYER_LIST)).not.toContainText('Not ready');
 
     await ctx1.close();
     await ctx2.close();
@@ -70,7 +78,12 @@ test.describe('Phase 3 — Lobby (US1)', () => {
     await awaitPhase(p2, 'lobby');
 
     await joinAs(p1, 'Alice');
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Alice');
     await joinAs(p2, 'Bob');
+
+    // Wait until both players are visible on both pages before clicking Ready
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Bob');
+    await expect(p2.locator(PLAYER_LIST)).toContainText('Alice');
 
     await bothReady(p1, p2);
 
@@ -95,14 +108,18 @@ test.describe('Phase 3 — Lobby (US1)', () => {
     await awaitPhase(p2, 'lobby');
 
     await joinAs(p1, 'Alice');
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Alice');
     await joinAs(p2, 'Bob');
+
+    // Wait until both players appear on both pages
+    await expect(p1.locator(PLAYER_LIST)).toContainText('Bob');
+    await expect(p2.locator(PLAYER_LIST)).toContainText('Alice');
 
     // Only p1 clicks Ready
     await p1.click(READY_BTN);
 
-    // p2 should see Alice as ready
+    // p2 should see Alice as ready, game should NOT have started
     await expect(p2.locator(PLAYER_LIST)).toContainText('Ready');
-    // Game should NOT have started — both still on lobby screen
     await expect(p1.locator('#screen-lobby')).not.toHaveClass(/hidden/);
     await expect(p2.locator('#screen-lobby')).not.toHaveClass(/hidden/);
 

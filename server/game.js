@@ -33,6 +33,18 @@ export function createInitialState() {
 /** Singleton game state — the single source of truth for the server. */
 export const state = createInitialState();
 
+/**
+ * Reset state in-place to a clean lobby state.
+ * Closes all open WebSocket connections so clients reconnect fresh.
+ * Only called from the /test/reset endpoint (TRIVIA_MOCK mode).
+ */
+export function resetState() {
+  for (const ws of state.players.keys()) ws.terminate();
+  for (const ws of state.waitingQueue.keys()) ws.terminate();
+  const fresh = createInitialState();
+  Object.assign(state, fresh);
+}
+
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
@@ -158,8 +170,8 @@ async function startGame() {
   state.phase = GamePhase.VOTING;
   try {
     state.categories = await fetchCategories();
-  } catch {
-    // Leave categories empty; voting handler will deal with it
+  } catch (e) {
+    console.error('[startGame] fetchCategories error:', e.message);
   }
   broadcast(state.players.keys(), 'state:full', serializeState(state));
 }

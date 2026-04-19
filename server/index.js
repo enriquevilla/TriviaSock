@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import { dispatch } from './handlers.js';
 import { unicast, broadcast, serializeLobbyState } from './broadcast.js';
-import { state, GamePhase, serializeState, handleMidGameDisconnect } from './game.js';
+import { state, GamePhase, serializeState, handleMidGameDisconnect, resetState } from './game.js';
 
 const PORT = 3001;
 const PROD = process.env.NODE_ENV === 'production';
@@ -21,7 +21,17 @@ const MIME = {
   '.svg':  'image/svg+xml',
 };
 
+const MOCK = process.env.TRIVIA_MOCK === 'true';
+
 const server = http.createServer((req, res) => {
+  // Test-only reset endpoint: terminates all connections and wipes state.
+  if (MOCK && req.method === 'POST' && req.url === '/test/reset') {
+    resetState();
+    res.writeHead(200);
+    res.end('ok');
+    return;
+  }
+
   if (!PROD) {
     res.writeHead(404);
     res.end('Not found');
