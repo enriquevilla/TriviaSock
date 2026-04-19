@@ -1,5 +1,6 @@
-import { unicast } from './broadcast.js';
+import { unicast, broadcast, serializeLobbyState } from './broadcast.js';
 import { validate, errorPayload } from './validate.js';
+import { addPlayer } from './game.js';
 
 /**
  * Handler registry — populated by registerHandler() as each phase is implemented.
@@ -62,3 +63,22 @@ export function dispatch(ws, rawMessage, state) {
 
   handler(ws, payload, state);
 }
+
+// ---------------------------------------------------------------------------
+// Lobby handlers
+// ---------------------------------------------------------------------------
+
+registerHandler('lobby:join', (ws, payload, state) => {
+  if (!validate(payload, { name: 'string' })) {
+    unicast(ws, 'error', errorPayload('NAME_INVALID', 'Payload must include a string "name" field.'));
+    return;
+  }
+
+  const result = addPlayer(ws, payload.name);
+  if (typeof result === 'string') {
+    unicast(ws, 'error', errorPayload(result, `Could not join: ${result}.`));
+    return;
+  }
+
+  broadcast(state.players.keys(), 'state:full', serializeLobbyState(state));
+});
