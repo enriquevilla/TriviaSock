@@ -97,10 +97,10 @@ Verify both tabs show consistent player lists and transition to voting simultane
 
 ### Tests — US1 (`tests/e2e/lobby.test.js`)
 
-- [ ] T076 [P] [US1] Test: two contexts join with unique names → both pages show both player names in the lobby player list
-- [ ] T077 [P] [US1] Test: duplicate name entry → second page receives an error message and the name field is re-enabled
-- [ ] T078 [P] [US1] Test: both players click Ready → both pages transition to `voting` phase (assert phase indicator)
-- [ ] T079 [P] [US1] Test: one player clicks Ready → the other page shows that player as ready but the game does not start
+- [x] T076 [P] [US1] Test: two contexts join with unique names → both pages show both player names in the lobby player list
+- [x] T077 [P] [US1] Test: duplicate name entry → second page receives an error message and the name field is re-enabled
+- [x] T078 [P] [US1] Test: both players click Ready → both pages transition to `voting` phase (assert phase indicator)
+- [x] T079 [P] [US1] Test: one player clicks Ready → the other page shows that player as ready but the game does not start
 
 **Checkpoint**: US1 is fully functional. Two players can join, see each other, click Ready, and the phase transitions to voting (blank screen is fine at this point).
 
