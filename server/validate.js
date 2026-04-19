@@ -20,3 +20,18 @@ export function validate(msg, schema) {
 export function errorPayload(code, message) {
   return { code, message };
 }
+
+/**
+ * Escape a string for safe HTML rendering.
+ * Applied to player names before broadcasting to clients.
+ * @param {string} str
+ * @returns {string}
+ */
+export function htmlEscape(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

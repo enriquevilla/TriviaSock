@@ -1,4 +1,5 @@
 import { broadcast } from './broadcast.js';
+import { htmlEscape } from './validate.js';
 
 export const GamePhase = {
   LOBBY:           'lobby',
@@ -40,7 +41,7 @@ export function serializeState(s) {
   const serialized = {
     phase: s.phase,
     players: [...s.players.values()].map(p => ({
-      name: p.name,
+      name: htmlEscape(p.name),
       score: p.score,
       ready: p.ready,
     })),

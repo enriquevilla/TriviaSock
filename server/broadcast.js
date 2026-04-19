@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import { htmlEscape } from './validate.js';
 
 /**
  * Send a typed message to a single WebSocket client.
@@ -23,4 +24,23 @@ export function broadcast(clients, type, payload) {
   for (const ws of clients) {
     unicast(ws, type, payload);
   }
+}
+
+/**
+ * Build the state:full payload for the LOBBY phase.
+ * Player names are HTML-escaped before leaving the server.
+ * @param {import('./game.js').GameState} state
+ */
+export function serializeLobbyState(state) {
+  return {
+    phase: state.phase,
+    players: [...state.players.values()].map(p => ({
+      name: htmlEscape(p.name),
+      score: p.score,
+      ready: p.ready,
+    })),
+    waitingCount: state.waitingQueue.size,
+    round: null,
+    vote: null,
+  };
 }

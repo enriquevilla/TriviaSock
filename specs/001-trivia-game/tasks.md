@@ -86,7 +86,7 @@ Verify both tabs show consistent player lists and transition to voting simultane
 - [ ] T017 [US1] Add `lobby:ready` handler in `server/handlers.js`: reject with `NOT_IN_LOBBY` if phase is not `LOBBY`; find the player by `ws`; set `player.ready = true`; broadcast updated lobby state; then call `checkAllReady()`
 - [ ] T018 [US1] Add `checkAllReady()` to `server/game.js`: count active connected players; if all are ready AND count >= `MIN_PLAYERS` (default 2), call `startGame()`; `startGame()` sets phase to `VOTING` and calls `fetchCategories()` to populate `state.categories`; broadcast `state:full` to all active players
 - [ ] T019 [US1] Add WebSocket `close` handler in `server/index.js`: find the disconnected `ws` in `state.players`; remove them; if phase is `LOBBY` broadcast updated lobby state; if phase is NOT `LOBBY` or `GAME_OVER` call `handleMidGameDisconnect(ws)` (stub for now — just removes player and broadcasts)
-- [ ] T020 [US1] Add `serializeLobbyState()` helper to `server/broadcast.js`: returns the `state:full` payload for lobby phase (player names, ready flags, scores, waitingCount)
+- [x] T020 [US1] Add `serializeLobbyState()` helper to `server/broadcast.js`: returns the `state:full` payload for lobby phase (player names, ready flags, scores, waitingCount)
 
 ### Client — US1
 
