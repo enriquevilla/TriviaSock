@@ -4,8 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import { dispatch } from './handlers.js';
-import { unicast, broadcast } from './broadcast.js';
-import { state, serializeState, handleMidGameDisconnect } from './game.js';
+import { unicast, broadcast, serializeLobbyState } from './broadcast.js';
+import { state, GamePhase, serializeState, handleMidGameDisconnect } from './game.js';
 
 const PORT = 3001;
 const PROD = process.env.NODE_ENV === 'production';
@@ -64,10 +64,16 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    handleMidGameDisconnect(ws);
-    // Ensure ws is removed from all maps even if handleMidGameDisconnect skips it
-    state.players.delete(ws);
-    state.waitingQueue.delete(ws);
+    if (state.phase === GamePhase.LOBBY) {
+      state.players.delete(ws);
+      state.waitingQueue.delete(ws);
+      broadcast(state.players.keys(), 'state:full', serializeLobbyState(state));
+    } else if (state.phase !== GamePhase.GAME_OVER) {
+      handleMidGameDisconnect(ws);
+    } else {
+      state.players.delete(ws);
+      state.waitingQueue.delete(ws);
+    }
   });
 });
 

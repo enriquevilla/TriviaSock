@@ -85,7 +85,7 @@ Verify both tabs show consistent player lists and transition to voting simultane
 - [x] T016 [US1] Add `lobby:join` handler in `server/handlers.js`: validate payload has `name: 'string'`; call `addPlayer`; on success broadcast updated lobby state; on failure unicast `NAME_TAKEN` or `NAME_INVALID` error
 - [x] T017 [US1] Add `lobby:ready` handler in `server/handlers.js`: reject with `NOT_IN_LOBBY` if phase is not `LOBBY`; find the player by `ws`; set `player.ready = true`; broadcast updated lobby state; then call `checkAllReady()`
 - [x] T018 [US1] Add `checkAllReady()` to `server/game.js`: count active connected players; if all are ready AND count >= `MIN_PLAYERS` (default 2), call `startGame()`; `startGame()` sets phase to `VOTING` and calls `fetchCategories()` to populate `state.categories`; broadcast `state:full` to all active players
-- [ ] T019 [US1] Add WebSocket `close` handler in `server/index.js`: find the disconnected `ws` in `state.players`; remove them; if phase is `LOBBY` broadcast updated lobby state; if phase is NOT `LOBBY` or `GAME_OVER` call `handleMidGameDisconnect(ws)` (stub for now — just removes player and broadcasts)
+- [x] T019 [US1] Add WebSocket `close` handler in `server/index.js`: find the disconnected `ws` in `state.players`; remove them; if phase is `LOBBY` broadcast updated lobby state; if phase is NOT `LOBBY` or `GAME_OVER` call `handleMidGameDisconnect(ws)` (stub for now — just removes player and broadcasts)
 - [x] T020 [US1] Add `serializeLobbyState()` helper to `server/broadcast.js`: returns the `state:full` payload for lobby phase (player names, ready flags, scores, waitingCount)
 
 ### Client — US1
