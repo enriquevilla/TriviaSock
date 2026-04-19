@@ -32,6 +32,42 @@ export function createInitialState() {
 /** Singleton game state — the single source of truth for the server. */
 export const state = createInitialState();
 
+const MAX_PLAYERS = 8;
+
+/**
+ * Add a player to the lobby. Returns the new player object on success,
+ * or one of these error strings on failure:
+ *   'NAME_INVALID'  — empty, too long, or non-printable-ASCII characters
+ *   'LOBBY_FULL'    — MAX_PLAYERS already in state.players
+ *   'NAME_TAKEN'    — case-insensitive duplicate in players or waitingQueue
+ * Names are stored raw (trimmed); htmlEscape is applied at serialization time.
+ * @param {import('ws').WebSocket} ws
+ * @param {string} name
+ * @returns {{ name: string, score: number, ready: boolean, joinedAt: number } | string}
+ */
+export function addPlayer(ws, name) {
+  const trimmed = name.trim();
+  if (
+    trimmed.length === 0 ||
+    trimmed.length > 20 ||
+    !/^[\x20-\x7E]+$/.test(trimmed)
+  ) return 'NAME_INVALID';
+
+  if (state.players.size >= MAX_PLAYERS) return 'LOBBY_FULL';
+
+  const lower = trimmed.toLowerCase();
+  for (const p of state.players.values()) {
+    if (p.name.toLowerCase() === lower) return 'NAME_TAKEN';
+  }
+  for (const p of state.waitingQueue.values()) {
+    if (p.name.toLowerCase() === lower) return 'NAME_TAKEN';
+  }
+
+  const player = { name: trimmed, score: 0, ready: false, joinedAt: Date.now() };
+  state.players.set(ws, player);
+  return player;
+}
+
 /**
  * Serialize the current state for broadcast to active clients.
  * Phase-sensitive fields (correctIndex, pointWinner) are omitted during
