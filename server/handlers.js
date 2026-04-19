@@ -1,6 +1,6 @@
 import { unicast, broadcast, serializeLobbyState } from './broadcast.js';
 import { validate, errorPayload } from './validate.js';
-import { addPlayer } from './game.js';
+import { addPlayer, GamePhase, checkAllReady } from './game.js';
 
 /**
  * Handler registry — populated by registerHandler() as each phase is implemented.
@@ -81,4 +81,21 @@ registerHandler('lobby:join', (ws, payload, state) => {
   }
 
   broadcast(state.players.keys(), 'state:full', serializeLobbyState(state));
+});
+
+registerHandler('lobby:ready', (ws, payload, state) => {
+  if (state.phase !== GamePhase.LOBBY) {
+    unicast(ws, 'error', errorPayload('NOT_IN_LOBBY', 'lobby:ready is only valid during the lobby phase.'));
+    return;
+  }
+
+  const player = state.players.get(ws);
+  if (!player) {
+    unicast(ws, 'error', errorPayload('NOT_AUTHENTICATED', 'Player not found in lobby.'));
+    return;
+  }
+
+  player.ready = true;
+  broadcast(state.players.keys(), 'state:full', serializeLobbyState(state));
+  checkAllReady();
 });

@@ -141,6 +141,9 @@ export function serializeState(s) {
 // can reference them without forward-declaration errors.
 // ---------------------------------------------------------------------------
 
+/** Checks if all lobby players are ready and starts the game. Filled in: T018 (Phase 3). */
+export function checkAllReady() { /* stub */ }
+
 /** Ends the current game and transitions to GAME_OVER. Filled in: T047 (Phase 6). */
 export function endGame() { /* stub */ }
 
