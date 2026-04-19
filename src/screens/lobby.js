@@ -44,3 +44,36 @@ export function renderLobby(state) {
     screen.prepend(joinForm);
   }
 }
+
+export function updateLobbyPlayers(players) {
+  let list = document.getElementById('player-list');
+  if (!list) {
+    list = document.createElement('ul');
+    list.id = 'player-list';
+    screen.appendChild(list);
+  }
+
+  list.innerHTML = '';
+  for (const player of players) {
+    const li = document.createElement('li');
+    li.className = 'player-score-row';
+    li.dataset.player = player.name;
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'player-name';
+    nameEl.textContent = player.name;
+
+    const statusEl = document.createElement('span');
+    statusEl.className = 'ready-status';
+    statusEl.textContent = player.ready ? 'Ready' : 'Not ready';
+
+    const scoreEl = document.createElement('span');
+    scoreEl.className = 'score';
+    scoreEl.textContent = player.score;
+
+    li.appendChild(nameEl);
+    li.appendChild(statusEl);
+    li.appendChild(scoreEl);
+    list.appendChild(li);
+  }
+}
